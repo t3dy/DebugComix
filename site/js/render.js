@@ -55,7 +55,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         .map((p) => `<p>${p}</p>`)
         .join("");
 
+      const imageHtml = entry.image
+        ? `<img src="images/${entry.image}" alt="${entry.title}">`
+        : "";
+
       div.innerHTML = `
+        ${imageHtml}
         <h2>${entry.title}</h2>
         ${narrativeParagraphs}
         <div class="project-lesson">

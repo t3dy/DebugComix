@@ -2,78 +2,91 @@
   {
     "title": "What Claude Code Actually Does Under the Hood",
     "section": "the-machine",
+    "image": "two_brains_ai_system.png",
     "narrative": "The first thing I learned is that Claude Code is not \"thinking like a human programmer.\" It runs an agent loop over tools: inspect files, infer a plan, call shell and file-edit tools, read outputs, update its internal scratch state, and repeat until it hits a stopping condition or needs approval. Subagents are separate workers with their own context windows, prompts, tool access, and permissions. Hooks fire automatically at lifecycle events to run deterministic checks or enforce policies.\n\nWhat feels like one continuous act of authorship is actually a sequence of narrow, lossy operations. The model reads only slices of the repo at a time, forms a provisional theory of the task, then keeps revising that theory as commands succeed or fail. When I saw things like \"Investigate project state,\" \"run build,\" \"audit site,\" \"fix workflow,\" \"generate scaffolds,\" and \"launch background agents,\" those were not one monolithic cognition. They were multiple small passes over different local contexts, often with summarization and compaction between them.",
     "lesson": "Understanding this agent-loop architecture changes how you prompt. Instead of writing one grand instruction and hoping the model executes it faithfully, you write small, bounded tasks that match how the system actually processes work: one tool call at a time, one file read at a time, one decision at a time."
   },
   {
     "title": "How Subagents Create Instability",
     "section": "subagents",
+    "image": "sequential_vs_swarms.png",
     "narrative": "Each subagent runs in its own context window with independent permissions. That is useful for decomposition, but it also means every delegation creates more process state, more file handles, more shell activity, and more opportunities for stale assumptions if the parent task or working directory changes midstream.\n\nIn my project, a deleted working directory plus multiple spawned agents was exactly the kind of environmental instability that produced zombie-looking leftovers and \"failed to load session\" errors even when the actual site code was fine. The pattern is consistent with how multi-agent CLI tooling behaves in practice: the more parallel processes you run, the more fragile the overall system becomes.",
     "lesson": "Keep concurrency low. One writing agent at a time, processing ten entries per batch, with validation and commit after each batch. The moment you have agents writing across five categories simultaneously, you cross from efficient decomposition into uncontrolled concurrency."
   },
   {
     "title": "Context Compaction and Memory Loss",
     "section": "context",
+    "image": "conversation_vs_repo_memory.png",
     "narrative": "Claude Code compacts conversations automatically as context fills. This means some fine detail gets compressed into summaries rather than carried forward verbatim. Long threads reduce execution reliability because earlier instructions can be summarized or lost entirely.\n\nI kept appending new requirements into the same active thread: AI topics, new pages, extra named figures, loop automation, crash safety. The model then had to preserve an ever-growing backlog while also acting. That causes one of two bad outcomes: either it compacts aggressively and forgets nuance, or it keeps too much in context and degrades execution quality.",
     "lesson": "The right move is not \"more context\" — it is \"better externalized state.\" Store project memory in repo files like PROJECT_STATUS.md, BATCH_PLAN.json, and CONTENT_BACKLOG.csv. Each session reads those files at the start instead of relying on chat memory. A crash or restart does not erase the operational state."
   },
   {
     "title": "The Too-Many-Hats Problem",
     "section": "role-drift",
+    "image": "too_many_hats.png",
     "narrative": "The main critique of my workflow is that I let one session become planner, build engineer, content strategist, QA auditor, deployment engineer, taxonomy designer, and copywriter at the same time. Once the agent is switching between repo surgery, web verification, taxonomy reconciliation, batch text generation, and live deployment, its local optimization target changes every few minutes.\n\nYou can see it in the transcript: crash forensics to git safety, then Pages workflow debugging, then entry auditing, then scaffold generation, then body writing, then adding new sections, then more categories, then large parallel batch generation. That is exactly how a coding agent gets brittle.",
     "lesson": "A sharper workflow splits into six bounded phases with hard stop conditions: (1) Recover and snapshot, (2) Verify build/deploy pipeline, (3) Audit content gaps deterministically, (4) Generate scaffolds only, (5) Fill bodies in controlled batches, (6) Run QA/build/publish. One phase per session. One hat at a time."
   },
   {
     "title": "Deterministic Scripts vs LLM Reasoning",
     "section": "two-brains",
+    "image": "scripts_vs_llm.png",
     "narrative": "The deterministic/LLM boundary in my workflow was mostly correct, but it should have been even stricter. Python should own everything that is schema-shaped or rule-based: parsing source files, deduping aliases, slugging, frontmatter generation, cross-link inference, batch assignment, TODO discovery, content counts, and validation reports. The model should only write prose for fields that genuinely require synthesis.\n\nI already moved in this direction with audit_entries.py, lookups.py, generate_scaffolds.py, and find_todos.py. That is the correct architecture. The next refinement is to make prose generation write to a machine-checkable intermediate format first, then merge with a deterministic script. Never let large swarms edit markdown files directly.",
     "lesson": "Have agents emit structured payloads — slug, summary_body, classical, value_form, citations_needed — then merge with a deterministic script. That reduces corruption, bad formatting, and partial writes. The LLM is a text generator, not a file editor."
   },
   {
     "title": "Why Open-Ended Loops Fail",
     "section": "loops",
+    "image": "testable_vs_vague_prompts.png",
     "narrative": "The most important prompting improvement is to stop asking for \"run on loop until everything is done\" as a single open-ended instruction. Agent loops need explicit invariants. Better is something like: work only within content/terms/; process exactly one batch file; do not create new categories; do not touch navigation or build scripts; after each 10 entries, run validator and stop.\n\nThat sounds less magical, but it is how you keep the system from wandering. Without explicit stop conditions, the agent will keep finding new things to do, each one reasonable in isolation but collectively unstable.",
     "lesson": "Every prompt should declare: the exact writable paths, the exact forbidden paths, the validator command, the batch size, and the stop condition. That one change improves crash recovery, token use, and output consistency more than any clever prompt phrasing."
   },
   {
     "title": "The Power of Hooks",
     "section": "hooks",
+    "image": "hooks_guardians.png",
     "narrative": "Hooks are probably the single most underused feature in AI engineering workflows. You should not rely on the model to remember your rules — put the rules in hooks. A pre-command hook can block edits outside the current project root. A post-edit hook can run frontmatter and schema validation on touched markdown. A pre-commit hook can run build scripts, check content counts, and refuse commit on mismatch.\n\nA session-start hook can inject the current phase, active batch, and forbidden directories. A permission hook can auto-allow a small safe set of commands while still blocking dangerous ones. These hooks transform a fragile conversational workflow into a structured state machine.",
     "lesson": "Hooks enforce discipline automatically. Instead of hoping the agent remembers not to edit build scripts, a hook blocks the edit before it happens. Instead of manually running validation, a hook runs it after every file change. This is the difference between rules-as-suggestions and rules-as-code."
   },
   {
     "title": "Skills as Modular Tools",
     "section": "skills",
+    "image": "claude_skills_arsenal.png",
     "narrative": "The best use of skills is not one mega skill that writes everything. It is a small library of narrow, composable skills with clear entry and exit conditions. Based on my project, the ideal set includes: a repo-recovery skill, a taxonomy-audit skill, a scaffold-generator skill, a content-batch-writer skill, a site-QA skill, and a deploy-guard skill.\n\nEach skill has a specific input, a specific output, and a specific scope. The content-batch-writer skill is forbidden from editing anything except files listed in one batch manifest. The deploy-guard skill checks branch/workflow mismatch, stale generated files, and cache-busting verification before any push.",
     "lesson": "Use skills to shrink the decision surface, use subagents only inside those constrained skills, and use hooks to enforce guardrails automatically. Small specialized tools outperform one giant prompt."
   },
   {
     "title": "The Illustration Design Process",
     "section": "design",
+    "image": "agent_swarm_strike_team.png",
     "narrative": "The comic illustrations in this series were designed using a two-panel instructional template. Each image connects a conceptual mental model (left panel) with a concrete implementation in a development interface (right panel). The left panel uses XKCD-style stick figures, Tufte-style dense annotations, and workflow/circuit metaphors. The right panel shows what the concept looks like in a real Claude Code prompt window, Windows terminal, or IDE.\n\nThis format reinforces learning by pairing abstract reasoning with operational practice. The viewer immediately understands both why a workflow principle exists and what it looks like in practice. The designs were iterated through conversation: first a technical template specification, then individual panel designs, then image generation with ChatGPT's DALL-E, with each image reviewed and refined before moving to the next.",
     "lesson": "The design process itself demonstrated the principles being taught. Each illustration was a bounded task with clear specifications. The template acted as a deterministic scaffold while the creative content was the probabilistic element. Breaking the series into individual images with explicit designs prevented the kind of scope drift that plagued the dictionary project."
   },
   {
     "title": "Treating the Agent as a Pipeline Component",
     "section": "pipeline-thinking",
+    "image": "deterministic_pipeline.png",
     "narrative": "The most important conceptual shift is seeing the agent as one part of a larger system. The pipeline itself should define the rules, structure, and state of the project. The agent simply fills in the pieces that require interpretation or writing. When the system is designed this way, failures become manageable because the deterministic parts remain intact.\n\nA compact example of the right kind of master instruction: \"Read PROJECT_STATUS.md and BATCH_PLAN.json. Operate only in content/terms/. Do not modify build scripts, navigation, workflows, or other categories. For each listed slug, fill only the body and traditions sections. After every 10 files, run validation and append results to PROJECT_STATUS.md. If validation fails, stop and report. Do not spawn subagents unless the current skill explicitly allows it.\"",
     "lesson": "Treat Claude Code less like a brilliant apprentice and more like a compiler pipeline with stochastic prose modules. When the task is deterministic, script it. When the task is judgment-heavy, isolate it. When the task is large, batch it. When the task is risky, gate it with hooks. When the task is long-running, externalize state into files so a crashed session can resume from the repo instead of from memory."
   },
   {
     "title": "How the Comics Were Made",
     "section": "comic-production",
+    "image": "uncontrolled_editing_vs_structured.png",
     "narrative": "I designed each comic as a two-panel template: a concept illustration on the left and an interface screenshot on the right. Before generating any image, I wrote a detailed spec for each panel — the characters, annotations, layout, interface elements, and the exact message each panel needed to convey. Then I worked through conversation to iterate on the designs, refining compositions and details before generating the final images with DALL-E.\n\nThis process itself demonstrated the principles being taught throughout the series. Bounded tasks with clear specifications produce better results than open-ended creative prompts. Each image was a single deliverable with explicit design requirements — not a vague request like \"make me some comics about AI engineering.\" The spec came first, the generation came second, and the iteration happened within a constrained scope.",
     "lesson": "The design process mirrors the engineering advice: break creative work into bounded tasks with specifications. Don't ask for \"make me some comics\" — write the panel layout, characters, annotations, and interface elements first, then generate. The spec is the scaffold; the image generation is the probabilistic fill."
   },
   {
     "title": "Building the Website with Its Own Lessons",
     "section": "meta-build",
+    "image": "sandbox_path_restrictions.png",
     "narrative": "I built this website by feeding Claude Code a single structured prompt that contained exact file paths, JSON schemas, lesson content, and implementation instructions. The prompt specified the directory structure, rendering logic, data format, and style requirements. It worked on the first attempt because the task was bounded and fully specified — exactly the kind of deterministic scaffold the comics teach about.\n\nThere was no role switching, no scope creep, no open-ended iteration loop. The agent received a complete spec and built the site in one pass. Every file path was declared, every data structure was defined, every rendering behavior was described. The prompt was not a conversation — it was a build manifest. And that is why it succeeded where earlier attempts at the dictionary project had failed.",
     "lesson": "The website build succeeded because it followed the principles it teaches. A single structured prompt with clear deliverables, no role switching, no scope creep, no open-ended loops. The agent built the site in one pass because the spec was complete."
   },
   {
     "title": "From Vibe Coding to Engineered Workflows",
     "section": "conclusion",
+    "image": "probabilistic_reasoning.png",
     "narrative": "The overall arc of this project traces a path from ambitious but unstructured vibe coding to disciplined AI engineering. It started with \"everything everywhere all at once\" — one massive session trying to be planner, builder, writer, auditor, and deployer simultaneously. That approach crashed, corrupted state, lost context, and produced inconsistent output.\n\nThe recovery came through learning what actually makes AI workflows reliable: bounded phases, externalized state, deterministic scaffolds, controlled batch processing, hooks that enforce rules automatically, and skills that constrain scope. Those lessons were distilled into visual comics that teach the principles, and then demonstrated by building a website that follows them. The journey from vibe coding to engineered workflows is the story this entire project tells.",
     "lesson": "The path from vibe coding to reliable AI engineering is not about using AI less — it's about using it within structure. Scripts handle structure, models handle meaning, hooks enforce rules, batches control scope, and the repo carries the memory. That combination is what makes the system work."
   }
