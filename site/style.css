@@ -1,0 +1,161 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: #f5f3ef;
+  color: #2c2c2c;
+  line-height: 1.7;
+}
+
+header {
+  text-align: center;
+  padding: 3rem 1rem 2rem;
+  background: #fff;
+  border-bottom: 1px solid #e0dcd6;
+}
+
+header h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+header .subtitle {
+  font-size: 1.1rem;
+  color: #666;
+  margin-top: 0.4rem;
+}
+
+nav {
+  margin-top: 1.2rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.nav-link {
+  display: inline-block;
+  padding: 0.5rem 1.5rem;
+  text-decoration: none;
+  color: #555;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  transition: background 0.15s, color 0.15s;
+}
+
+.nav-link:hover {
+  background: #f0ece4;
+}
+
+.nav-link.active {
+  background: #2c2c2c;
+  color: #fff;
+  border-color: #2c2c2c;
+}
+
+.content-section {
+  display: none;
+}
+
+.content-section.active {
+  display: block;
+}
+
+.process-intro {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.process-intro h2 {
+  font-size: 1.8rem;
+  color: #1a1a1a;
+  margin-bottom: 0.8rem;
+}
+
+.process-intro .intro-text {
+  font-size: 1.05rem;
+  color: #555;
+  max-width: 720px;
+  margin: 0 auto;
+  line-height: 1.8;
+}
+
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+}
+
+.lesson {
+  background: #fff;
+  border-radius: 8px;
+  margin-bottom: 2.5rem;
+  padding: 2rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.lesson img {
+  display: block;
+  max-width: 100%;
+  width: 900px;
+  margin: 0 auto 1.5rem;
+  border-radius: 6px;
+  border: 1px solid #e0dcd6;
+}
+
+.lesson h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: #1a1a1a;
+}
+
+.lesson p {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  color: #3a3a3a;
+}
+
+.lesson .project-lesson {
+  background: #faf8f4;
+  border-left: 4px solid #c9a84c;
+  padding: 1rem 1.2rem;
+  border-radius: 0 6px 6px 0;
+  margin-top: 0.5rem;
+}
+
+.lesson .project-lesson h3 {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8a7530;
+  margin-bottom: 0.5rem;
+}
+
+footer {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #999;
+  font-size: 0.9rem;
+  border-top: 1px solid #e0dcd6;
+}
+
+@media (max-width: 640px) {
+  header h1 {
+    font-size: 1.6rem;
+  }
+
+  .lesson {
+    padding: 1.2rem;
+  }
+
+  .lesson h2 {
+    font-size: 1.25rem;
+  }
+}
